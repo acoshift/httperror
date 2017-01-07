@@ -1,11 +1,12 @@
-package e
+// Package httperror is the reusable http error collection
+package httperror
 
 import (
 	"fmt"
 	"net/http"
 )
 
-// Error is the err's Error
+// Error is the httperror's Error
 type Error struct {
 	Status  int    `json:"status"`  // http status code
 	Code    string `json:"code"`    // error code

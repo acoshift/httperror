@@ -1,6 +1,6 @@
-# e
+# httperror
 
-[![GoDoc](https://godoc.org/github.com/acoshift/e?status.svg)](https://godoc.org/github.com/acoshift/e)
-[![Go Report Card](https://goreportcard.com/badge/github.com/acoshift/e)](https://goreportcard.com/report/github.com/acoshift/e)
+[![GoDoc](https://godoc.org/github.com/acoshift/httperror?status.svg)](https://godoc.org/github.com/acoshift/httperror)
+[![Go Report Card](https://goreportcard.com/badge/github.com/acoshift/httperror)](https://goreportcard.com/report/github.com/acoshift/httperror)
 
-Acoshift's error collection for Go
+Acoshift's HTTP error collection for Go
