@@ -2,6 +2,7 @@
 package httperror
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 )
@@ -73,6 +74,8 @@ var (
 )
 
 // Merge an error with other error
+// if one or both errors are Error type, result will be an Error
+// if none is Error, result will be native go's error
 func Merge(err, other error) error {
 	if other == nil {
 		return err
@@ -80,14 +83,17 @@ func Merge(err, other error) error {
 	if err == nil {
 		return other
 	}
-	var e *Error
-	var ok bool
-	if e, ok = err.(*Error); !ok {
-		e = Merge(InternalServerError, err).(*Error)
+	if e, ok := err.(*Error); ok {
+		r := e.Clone()
+		r.Message += "; " + other.Error()
+		return r
 	}
-	r := e.Clone()
-	r.Message += fmt.Sprintf("; %s", other.Error())
-	return nil
+	if e, ok := other.(*Error); ok {
+		r := e.Clone()
+		r.Message += "; " + err.Error()
+		return r
+	}
+	return errors.New(err.Error() + "; " + other.Error())
 }
 
 // BadRequestWith merges error with bad request
