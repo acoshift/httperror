@@ -27,6 +27,11 @@ func (err Error) Clone() *Error {
 	return &err
 }
 
+// NewError creates new Error
+func NewError(status int, code string, message string) error {
+	return &Error{Status: status, Code: code, Message: message}
+}
+
 // Func is the error creator function
 type Func func(error) error
 
@@ -62,18 +67,51 @@ func NewHTTPError(status int, code string) error {
 	return &Error{status, code, http.StatusText(status)}
 }
 
+var mapHTTPStatusCode = map[int]string{
+	http.StatusBadRequest:          "bad_request",
+	http.StatusUnauthorized:        "unauthorized",
+	http.StatusForbidden:           "forbidden",
+	http.StatusNotFound:            "not_found",
+	http.StatusMethodNotAllowed:    "method_not_allowed",
+	http.StatusRequestTimeout:      "request_timeout",
+	http.StatusConflict:            "conflict",
+	http.StatusGone:                "gone",
+	http.StatusInternalServerError: "internal_server_error",
+	http.StatusNotImplemented:      "not_implemented",
+}
+
+func newPreDefinedHTTPError(status int) error {
+	return NewHTTPError(status, mapHTTPStatusCode[status])
+}
+
+func newPreDefinedEmptyHTTPError(status int) error {
+	return NewError(status, mapHTTPStatusCode[status], "")
+}
+
 // Pre-defined errors
 var (
-	BadRequest          = NewHTTPError(http.StatusBadRequest, "bad_request")
-	Unauthorized        = NewHTTPError(http.StatusUnauthorized, "unauthorized")
-	Forbidden           = NewHTTPError(http.StatusForbidden, "forbidden")
-	NotFound            = NewHTTPError(http.StatusNotFound, "not_found")
-	MethodNotAllowed    = NewHTTPError(http.StatusMethodNotAllowed, "method_not_allowed")
-	RequestTimeout      = NewHTTPError(http.StatusRequestTimeout, "request_timeout")
-	Conflict            = NewHTTPError(http.StatusConflict, "conflict")
-	Gone                = NewHTTPError(http.StatusGone, "gone")
-	InternalServerError = NewHTTPError(http.StatusInternalServerError, "internal_server_error")
-	NotImplemented      = NewHTTPError(http.StatusNotImplemented, "not_implemented")
+	BadRequest          = newPreDefinedHTTPError(http.StatusBadRequest)
+	Unauthorized        = newPreDefinedHTTPError(http.StatusUnauthorized)
+	Forbidden           = newPreDefinedHTTPError(http.StatusForbidden)
+	NotFound            = newPreDefinedHTTPError(http.StatusNotFound)
+	MethodNotAllowed    = newPreDefinedHTTPError(http.StatusMethodNotAllowed)
+	RequestTimeout      = newPreDefinedHTTPError(http.StatusRequestTimeout)
+	Conflict            = newPreDefinedHTTPError(http.StatusConflict)
+	Gone                = newPreDefinedHTTPError(http.StatusGone)
+	InternalServerError = newPreDefinedHTTPError(http.StatusInternalServerError)
+	NotImplemented      = newPreDefinedHTTPError(http.StatusNotImplemented)
+
+	// Empty message errors
+	emptyBadRequest          = newPreDefinedEmptyHTTPError(http.StatusBadRequest)
+	emptyUnauthorized        = newPreDefinedEmptyHTTPError(http.StatusUnauthorized)
+	emptyForbidden           = newPreDefinedEmptyHTTPError(http.StatusForbidden)
+	emptyNotFound            = newPreDefinedEmptyHTTPError(http.StatusNotFound)
+	emptyMethodNotAllowed    = newPreDefinedEmptyHTTPError(http.StatusMethodNotAllowed)
+	emptyRequestTimeout      = newPreDefinedEmptyHTTPError(http.StatusRequestTimeout)
+	emptyConflict            = newPreDefinedEmptyHTTPError(http.StatusConflict)
+	emptyGone                = newPreDefinedEmptyHTTPError(http.StatusGone)
+	emptyInternalServerError = newPreDefinedEmptyHTTPError(http.StatusInternalServerError)
+	emptyNotImplemented      = newPreDefinedEmptyHTTPError(http.StatusNotImplemented)
 )
 
 // Merge an error with other error
@@ -88,12 +126,18 @@ func Merge(err, other error) error {
 	}
 	if e, ok := err.(*Error); ok {
 		r := e.Clone()
-		r.Message += "; " + other.Error()
+		if len(r.Message) > 0 {
+			r.Message += "; "
+		}
+		r.Message += other.Error()
 		return r
 	}
 	if e, ok := other.(*Error); ok {
 		r := e.Clone()
-		r.Message += "; " + err.Error()
+		if len(r.Message) > 0 {
+			r.Message += "; "
+		}
+		r.Message += err.Error()
 		return r
 	}
 	return errors.New(err.Error() + "; " + other.Error())
@@ -101,17 +145,47 @@ func Merge(err, other error) error {
 
 // BadRequestWith merges error with bad request
 func BadRequestWith(err error) error {
-	return Merge(BadRequest, err)
+	return Merge(emptyBadRequest, err)
 }
 
-// InternalServerErrorWith merges error with internal server error
-func InternalServerErrorWith(err error) error {
-	return Merge(InternalServerError, err)
+// UnauthorizedWith merges error with unauthorized
+func UnauthorizedWith(err error) error {
+	return Merge(emptyUnauthorized, err)
+}
+
+// ForbiddenWith merges error with forbidden
+func ForbiddenWith(err error) error {
+	return Merge(emptyForbidden, err)
+}
+
+// NotFoundWith merges error with not found
+func NotFoundWith(err error) error {
+	return Merge(emptyNotFound, err)
+}
+
+// MethodNotAllowedWith merges error with method not allowed
+func MethodNotAllowedWith(err error) error {
+	return Merge(emptyMethodNotAllowed, err)
+}
+
+// RequestTimeoutWith merges error with request timeout
+func RequestTimeoutWith(err error) error {
+	return Merge(emptyRequestTimeout, err)
 }
 
 // ConflictWith merges error with conflict
 func ConflictWith(err error) error {
-	return Merge(Conflict, err)
+	return Merge(emptyConflict, err)
+}
+
+// GoneWith merges error with gone
+func GoneWith(err error) error {
+	return Merge(emptyGone, err)
+}
+
+// InternalServerErrorWith merges error with internal server error
+func InternalServerErrorWith(err error) error {
+	return Merge(emptyInternalServerError, err)
 }
 
 // GRPC maps grpc error to http error
@@ -125,37 +199,37 @@ func GRPC(err error) error {
 	case codes.OK:
 		return nil
 	case codes.Canceled:
-		return &Error{http.StatusRequestTimeout, "canceled", desc}
+		return NewError(http.StatusRequestTimeout, "canceled", desc)
 	case codes.Unknown:
-		return &Error{http.StatusInternalServerError, "unknown", desc}
+		return NewError(http.StatusInternalServerError, "unknown", desc)
 	case codes.InvalidArgument:
-		return &Error{http.StatusBadRequest, "invalid_argument", desc}
+		return NewError(http.StatusBadRequest, "invalid_argument", desc)
 	case codes.DeadlineExceeded:
-		return &Error{http.StatusRequestTimeout, "deadline_exceeded", desc}
+		return NewError(http.StatusRequestTimeout, "deadline_exceeded", desc)
 	case codes.NotFound:
-		return &Error{http.StatusNotFound, "not_found", desc}
+		return NewError(http.StatusNotFound, "not_found", desc)
 	case codes.AlreadyExists:
-		return &Error{http.StatusConflict, "already_exists", desc}
+		return NewError(http.StatusConflict, "already_exists", desc)
 	case codes.PermissionDenied:
-		return &Error{http.StatusForbidden, "permission_denied", desc}
+		return NewError(http.StatusForbidden, "permission_denied", desc)
 	case codes.Unauthenticated:
-		return &Error{http.StatusUnauthorized, "unauthenticated", desc}
+		return NewError(http.StatusUnauthorized, "unauthenticated", desc)
 	case codes.ResourceExhausted:
-		return &Error{http.StatusForbidden, "resource_exhausted", desc}
+		return NewError(http.StatusForbidden, "resource_exhausted", desc)
 	case codes.FailedPrecondition:
-		return &Error{http.StatusPreconditionFailed, "failed_precondition", desc}
+		return NewError(http.StatusPreconditionFailed, "failed_precondition", desc)
 	case codes.Aborted:
-		return &Error{http.StatusConflict, "aborted", desc}
+		return NewError(http.StatusConflict, "aborted", desc)
 	case codes.OutOfRange:
-		return &Error{http.StatusBadRequest, "out_of_range", desc}
+		return NewError(http.StatusBadRequest, "out_of_range", desc)
 	case codes.Unimplemented:
-		return &Error{http.StatusNotImplemented, "unimplemented", desc}
+		return NewError(http.StatusNotImplemented, "unimplemented", desc)
 	case codes.Internal:
-		return &Error{http.StatusInternalServerError, "internal", desc}
+		return NewError(http.StatusInternalServerError, "internal", desc)
 	case codes.Unavailable:
-		return &Error{http.StatusServiceUnavailable, "service_unavailable", desc}
+		return NewError(http.StatusServiceUnavailable, "service_unavailable", desc)
 	case codes.DataLoss:
-		return &Error{http.StatusInternalServerError, "data_loss", desc}
+		return NewError(http.StatusInternalServerError, "data_loss", desc)
 	default:
 		return err
 	}

@@ -20,13 +20,15 @@ func TestMerge(t *testing.T) {
 		{errors.New("a"), errors.New("b"), errors.New("a; b")},
 		{BadRequest, nil, BadRequest},
 		{nil, Conflict, Conflict},
-		{BadRequest, Conflict, BadRequestWith(Conflict)},
-		{Conflict, BadRequest, ConflictWith(BadRequest)},
+		{emptyBadRequest, Conflict, BadRequestWith(Conflict)},
+		{emptyConflict, BadRequest, ConflictWith(BadRequest)},
 		{errors.New("a"), InternalServerError, errors.New(InternalServerError.Error() + "; a")},
+		{emptyBadRequest, errors.New("invalid payload"), errors.New("bad_request: [400] invalid payload")},
 	}
 
 	for _, c := range cases {
 		r := Merge(c.err, c.other)
+		t.Log(r)
 		if c.out != nil {
 			if r.Error() != c.out.Error() {
 				t.Errorf("expected merge result to be %v; got %v", c.out.Error(), r.Error())
